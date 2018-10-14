@@ -1,3 +1,5 @@
+# Linear interpolation between two configurations 
+# to construct configuration coordinate diagram
 from ase import atoms
 from ase import io
 

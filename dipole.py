@@ -21,22 +21,17 @@ n1,n2,n3 = int(line1[0]),int(line2[0]),int(line3[0])
 x1,y1,z1 = [float(s) for s in line1[1:]]
 x2,y2,z2 = [float(s) for s in line2[1:]]
 x3,y3,z3 = [float(s) for s in line3[1:]]
-a = np.array([x1,y1,z1])
-b = np.array([x2,y2,z2])
-c = np.array([x3,y3,z3])
-da = np.linalg.norm(a)
-db = np.linalg.norm(b)
-dc = np.linalg.norm(c)
+vec = np.array([[x1,y1,z1],[x2,y2,z2],[x3,y3,z3]])
 
 
-x,y,z = np.meshgrid(range(n1),range(n2),range(n3),indexing='ij')
-r = np.vstack((x.flatten(),y.flatten(),z.flatten())).T
+a,b,c = np.meshgrid(range(n1),range(n2),range(n3),indexing='ij')
+r = np.vstack((a.flatten(),b.flatten(),c.flatten())).T
+r = np.dot(r,vec)
 
-r = np.multiply(r,np.array([da,db,dc]))
 homo = homo.flatten()
 lumo = lumo.flatten()
 temp = np.multiply(homo,lumo)
-dipole = np.dot(temp,r)*da*db*dc
+dipole = np.dot(temp,r)*dx*dy*dz
 print dipole,'e Bohr'
 
 end = timer()

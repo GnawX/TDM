@@ -1,13 +1,40 @@
 PROGRAM TDM
   IMPLICIT NONE
-  INTEGER,PARAMETER       :: q = SELECTED_REAL_KIND(10)
-  INTEGER :: nat,n1,n2,n3
-  REAL(q) :: vec(3,3)
-  REAL(q), ALLOCATABLE :: vdata(:)
+  INTEGER,PARAMETER       :: q = SELECTED_REAL_KIND(16)
+  INTEGER :: nat,n1,n2,n3,i,j,k,ii
+  REAL(q) :: vec(3,3),mu(3),dv
+  REAL(q), ALLOCATABLE :: vdata1(:),vdata2(:), r(:,:)
   
   CALL READ_CUBE_HEADER('homo.cube',nat,n1,n2,n3,vec)
-  ALLOCATE(vdata(n1*n2*n3))
-  CALL READ_CUBE_DATA('homo.cube',nat,n1,n2,n3,vdata)
+  
+  dv = ABS((vec(1,2)*vec(2,3)-vec(1,3)*vec(2,2))*vec(3,1) + &
+       (vec(1,3)*vec(2,1)-vec(1,1)*vec(2,3))*vec(3,2) + &
+       (vec(1,1)*vec(2,2)-vec(1,2)*vec(2,1))*vec(3,3))
+       
+  ALLOCATE(vdata1(n1*n2*n3),vdata2(n1*n2*n3))
+  ALLOCATE(r(n1*n2*n3,3))
+  
+  CALL READ_CUBE_DATA('homo.cube',nat,n1,n2,n3,vdata1)
+  CALL READ_CUBE_DATA('lumo.cube',nat,n1,n2,n3,vdata2)
+  
+  ii=0
+  DO i=1,n1
+     DO j=1,n2
+        DO k=1,n3
+           ii=ii+1
+           r(ii,1)=i*vec(1,1)+j*vec(2,1)+k*vec(3,1)
+           r(ii,2)=i*vec(1,2)+j*vec(2,2)+k*vec(3,2)
+           r(ii,3)=i*vec(1,3)+j*vec(2,3)+k*vec(3,3)
+        ENDDO
+     ENDDO
+  ENDDO
+  
+  mu(1)=SUM(vdata1*vdata2*r(:,1))*dv
+  mu(2)=SUM(vdata1*vdata2*r(:,2))*dv
+  mu(3)=SUM(vdata1*vdata2*r(:,3))*dv
+  
+  
+  WRITE(*,FMT='(3F15.5)') (mu(i),i=1,3)
 
 END PROGRAM
 

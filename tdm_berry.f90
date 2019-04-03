@@ -1,9 +1,9 @@
 PROGRAM TDM_BERRY
   IMPLICIT NONE
-  INTEGER,PARAMETER       :: q = SELECTED_REAL_KIND(32)
+  INTEGER,PARAMETER       :: q = SELECTED_REAL_KIND(16)
   REAL(q),PARAMETER       :: TWOPI = ATAN(1.0_q)*8
   INTEGER :: nat,n1,n2,n3,i,j,k,ii
-  REAL(q) :: vec(3,3),mu(3),dv, kvec(3,3),r(3),kr(3),lvec(3,3)
+  REAL(q) :: vec(3,3),mu(3),dv, kvec(3,3),r(3),kr(3),amat(3,3),bmat(3,3), r_pbc(3)
   REAL(q), ALLOCATABLE :: vdata1(:),vdata2(:),ekrr(:,:),ekri(:,:)
 
   CALL READ_CUBE_HEADER('homo.cube',nat,n1,n2,n3,vec)
@@ -13,12 +13,12 @@ PROGRAM TDM_BERRY
        (vec(1,1)*vec(2,2)-vec(1,2)*vec(2,1))*vec(3,3))
 
 
-  lvec(1,:)=vec(1,:)*n1
-  lvec(2,:)=vec(2,:)*n2
-  lvec(3,:)=vec(3,:)*n3
+  amat(1,:)=vec(1,:)*n1
+  amat(2,:)=vec(2,:)*n2
+  amat(3,:)=vec(3,:)*n3
 
-  CALL MATINV3(TRANSPOSE(lvec),kvec)
-  kvec = kvec*TWOPI
+  CALL MATINV3(TRANSPOSE(amat),bmat)
+  kvec = bmat*TWOPI
 
   ALLOCATE(vdata1(n1*n2*n3),vdata2(n1*n2*n3))
   ALLOCATE(ekrr(n1*n2*n3,3))
@@ -35,7 +35,8 @@ PROGRAM TDM_BERRY
            r(1)=i*vec(1,1)+j*vec(2,1)+k*vec(3,1)
            r(2)=i*vec(1,2)+j*vec(2,2)+k*vec(3,2)
            r(3)=i*vec(1,3)+j*vec(2,3)+k*vec(3,3)
-           kr=MATMUL(r,kvec)
+           CALL PBE(r,amat,bmat,r_pbc)
+           kr=MATMUL(r_pbc,kvec)
            ekrr(ii,1)=COS(kr(1))
            ekrr(ii,2)=COS(kr(2))
            ekrr(ii,3)=COS(kr(3))
@@ -50,7 +51,7 @@ PROGRAM TDM_BERRY
   mu(1)=IMAG(LOG(CMPLX(SUM(vdata1*vdata2*ekrr(:,1))*dv,SUM(vdata1*vdata2*ekri(:,1))*dv)))
   mu(2)=IMAG(LOG(CMPLX(SUM(vdata1*vdata2*ekrr(:,2))*dv,SUM(vdata1*vdata2*ekri(:,2))*dv)))
   mu(3)=IMAG(LOG(CMPLX(SUM(vdata1*vdata2*ekrr(:,3))*dv,SUM(vdata1*vdata2*ekri(:,3))*dv)))
-  mu = MATMUL(MODULO(mu, TWOPI),lvec)/TWOPI
+  mu = MATMUL(MODULO(mu, TWOPI),amat)/TWOPI
 
   WRITE(*,FMT='(3F15.5)') (mu(i),i=1,3)
 
@@ -60,7 +61,7 @@ END PROGRAM
 
 SUBROUTINE READ_CUBE_HEADER(FIN,NAT,N1,N2,N3,VEC)
   IMPLICIT NONE
-  INTEGER,PARAMETER       :: q = SELECTED_REAL_KIND(32)
+  INTEGER,PARAMETER       :: q = SELECTED_REAL_KIND(16)
   CHARACTER(20), INTENT(IN)   :: FIN
   INTEGER, INTENT(OUT)    :: NAT,N1,N2,N3
   REAL(q), INTENT(OUT)    :: VEC(3,3)
@@ -81,7 +82,7 @@ END SUBROUTINE READ_CUBE_HEADER
 
 SUBROUTINE READ_CUBE_DATA(FIN,NAT,N1,N2,N3,VDATA)
   IMPLICIT NONE
-  INTEGER,PARAMETER       :: q = SELECTED_REAL_KIND(32)
+  INTEGER,PARAMETER       :: q = SELECTED_REAL_KIND(16)
   CHARACTER(20), INTENT(IN)   :: FIN
   INTEGER, INTENT(IN)     :: NAT,N1,N2,N3
   REAL(q), INTENT(OUT)    :: VDATA(N1*N2*N3)
@@ -120,7 +121,7 @@ END SUBROUTINE READ_CUBE_DATA
 
   SUBROUTINE MATINV3(A,B)
     !! Performs a direct calculation of the inverse of a 3×3 matrix.
-    INTEGER,PARAMETER       :: q = SELECTED_REAL_KIND(32)
+    INTEGER,PARAMETER       :: q = SELECTED_REAL_KIND(16)
     REAL(q), intent(in) :: A(3,3)   !! Matrix
     REAL(q),intent(out)             :: B(3,3)   !! Inverse matrix
     REAL(q)             :: detinv
@@ -141,3 +142,24 @@ END SUBROUTINE READ_CUBE_DATA
     B(2,3) = -detinv * (A(1,1)*A(2,3) - A(1,3)*A(2,1))
     B(3,3) = +detinv * (A(1,1)*A(2,2) - A(1,2)*A(2,1))
   END SUBROUTINE MATINV3
+  
+  
+  SUBROUTINE PBC(r, amat, bmat, r_pbc)
+      INTEGER,PARAMETER       :: q = SELECTED_REAL_KIND(16)
+      REAL(KIND=q), DIMENSION(3), INTENT(IN)            :: r
+      REAL(KIND=q), DIMENSION(3), INTENT(OUT)            :: r_pbc
+      REAL(q), INTENT(IN) :: amat(3,3), bmat(3,3)
+
+      REAL(KIND=q), DIMENSION(3)                        :: s
+         s = MATMUL()
+         s(1) = bmat(1, 1)*r(1)+bmat(1, 2)*r(2)+bmat(1, 3)*r(3)
+         s(2) = bmat(2, 1)*r(1)+bmat(2, 2)*r(2)+bmat(2, 3)*r(3)
+         s(3) = bmat(3, 1)*r(1)+bmat(3, 2)*r(2)+bmat(3, 3)*r(3)
+         s(1) = s(1)-ANINT(s(1))
+         s(2) = s(2)-ANINT(s(2))
+         s(3) = s(3)-ANINT(s(3))
+         r_pbc(1) = amat(1, 1)*s(1)+amat(2, 1)*s(2)+amat(3, 1)*s(3)
+         r_pbc(2) = amat(1, 2)*s(1)+amat(2, 2)*s(2)+amat(3, 2)*s(3)
+         r_pbc(3) = amat(1, 3)*s(1)+amat(2, 3)*s(2)+amat(3, 3)*s(3)
+
+   END SUBROUTINE PBC

@@ -35,7 +35,7 @@ PROGRAM TDM_BERRY
            r(1)=i*vec(1,1)+j*vec(2,1)+k*vec(3,1)
            r(2)=i*vec(1,2)+j*vec(2,2)+k*vec(3,2)
            r(3)=i*vec(1,3)+j*vec(2,3)+k*vec(3,3)
-           CALL PBE(r,amat,bmat,r_pbc)
+           CALL PBC(r,amat,bmat,r_pbc)
            kr=MATMUL(r_pbc,kvec)
            ekrr(ii,1)=COS(kr(1))
            ekrr(ii,2)=COS(kr(2))
@@ -151,15 +151,9 @@ END SUBROUTINE READ_CUBE_DATA
       REAL(q), INTENT(IN) :: amat(3,3), bmat(3,3)
 
       REAL(KIND=q), DIMENSION(3)                        :: s
-         s = MATMUL()
-         s(1) = bmat(1, 1)*r(1)+bmat(1, 2)*r(2)+bmat(1, 3)*r(3)
-         s(2) = bmat(2, 1)*r(1)+bmat(2, 2)*r(2)+bmat(2, 3)*r(3)
-         s(3) = bmat(3, 1)*r(1)+bmat(3, 2)*r(2)+bmat(3, 3)*r(3)
+         s = MATMUL(r,bmat)
          s(1) = s(1)-ANINT(s(1))
          s(2) = s(2)-ANINT(s(2))
          s(3) = s(3)-ANINT(s(3))
-         r_pbc(1) = amat(1, 1)*s(1)+amat(2, 1)*s(2)+amat(3, 1)*s(3)
-         r_pbc(2) = amat(1, 2)*s(1)+amat(2, 2)*s(2)+amat(3, 2)*s(3)
-         r_pbc(3) = amat(1, 3)*s(1)+amat(2, 3)*s(2)+amat(3, 3)*s(3)
-
+         r_pbc = MATMUL(s,amat)
    END SUBROUTINE PBC
